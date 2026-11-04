@@ -8,6 +8,8 @@ import Experience from "./components/Experience.vue";
 import FlipCard from "./components/FlipCard.vue";
 import Projects from "./components/Projects.vue";
 import ParticleBackground from "./components/ParticleBackground.vue";
+import PortfolioLoader from "./components/PortfolioLoader.vue";
+import FlipCardMusicPlayer from "./components/FlipCardMusicPlayer.vue";
 import TechStack from "./components/TechStack.vue";
 import cardFront from "./assets/card-front.jpeg";
 import mjoyPortrait from "./assets/mjoy.png";
@@ -15,6 +17,12 @@ import SmoothCursor from "./components/SmoothCursor.vue";
 import TextPortrait from "./components/TextPortrait.vue";
 
 const isDark = ref(true);
+const isPageLoading = ref(true);
+const loadingProgress = ref(0);
+let resolveProjectsReady: () => void = () => {};
+const projectsReady = new Promise<void>((resolve) => {
+  resolveProjectsReady = resolve;
+});
 const mobileMenuOpen = ref(false);
 const sectionIds = ["home", "about", "skills", "work", "experience", "contact"] as const;
 type SectionId = (typeof sectionIds)[number];
@@ -31,6 +39,11 @@ const currentSectionLabel = computed(
   () => sectionLabels[currentSection.value],
 );
 const currentYear = new Date().getFullYear();
+const portfolioCardFlipped = ref(false);
+
+function onPortfolioCardFlipChange(flipped: boolean) {
+  portfolioCardFlipped.value = flipped;
+}
 
 
 const portraitTextureText = `
@@ -553,6 +566,110 @@ function spawnGameEnemy() {
   });
 }
 
+function drawGameBug(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  color: string,
+  angle: number,
+) {
+  context.save();
+  context.translate(x, y);
+  context.rotate(angle);
+
+  const legWidth = Math.max(2, radius * 0.17);
+  context.lineCap = "round";
+  context.lineJoin = "round";
+
+  for (const side of [-1, 1]) {
+    for (const offset of [-0.38, 0, 0.38]) {
+      const rootX = offset * radius;
+      context.beginPath();
+      context.moveTo(rootX, side * radius * 0.22);
+      context.lineTo(rootX - radius * 0.12, side * radius * 0.65);
+      context.lineTo(rootX - radius * 0.28, side * radius * 0.94);
+      context.strokeStyle = "#252b38";
+      context.lineWidth = legWidth;
+      context.stroke();
+      context.beginPath();
+      context.moveTo(rootX - radius * 0.12, side * radius * 0.65);
+      context.lineTo(rootX - radius * 0.28, side * radius * 0.94);
+      context.strokeStyle = color;
+      context.globalAlpha = 0.72;
+      context.lineWidth = Math.max(1, radius * 0.045);
+      context.stroke();
+      context.globalAlpha = 1;
+    }
+  }
+
+  context.shadowColor = color;
+  context.shadowBlur = 12;
+
+  const shellSegments = [
+    { left: -1.32, right: -0.78, top: -0.5, bottom: 0.5 },
+    { left: -0.84, right: -0.3, top: -0.62, bottom: 0.62 },
+    { left: -0.36, right: 0.17, top: -0.57, bottom: 0.57 },
+  ];
+
+  for (const [index, segment] of shellSegments.entries()) {
+    context.beginPath();
+    context.moveTo(segment.left * radius, -radius * 0.12);
+    context.lineTo((segment.left + 0.13) * radius, segment.top * radius);
+    context.lineTo((segment.right - 0.06) * radius, (segment.top + 0.12) * radius);
+    context.lineTo(segment.right * radius, 0);
+    context.lineTo((segment.right - 0.05) * radius, (segment.bottom - 0.12) * radius);
+    context.lineTo((segment.left + 0.12) * radius, segment.bottom * radius);
+    context.closePath();
+    context.fillStyle = index % 2 === 0 ? "#252b38" : "#343b49";
+    context.strokeStyle = color;
+    context.globalAlpha = 0.9;
+    context.lineWidth = Math.max(1, radius * 0.055);
+    context.fill();
+    context.stroke();
+    context.globalAlpha = 1;
+  }
+
+  context.shadowBlur = 0;
+  context.beginPath();
+  context.moveTo(radius * 0.02, -radius * 0.28);
+  context.lineTo(radius * 0.46, -radius * 0.36);
+  context.lineTo(radius * 0.67, -radius * 0.17);
+  context.lineTo(radius * 0.72, 0);
+  context.lineTo(radius * 0.67, radius * 0.17);
+  context.lineTo(radius * 0.46, radius * 0.36);
+  context.lineTo(radius * 0.02, radius * 0.28);
+  context.closePath();
+  context.fillStyle = "#161b28";
+  context.strokeStyle = color;
+  context.lineWidth = Math.max(1, radius * 0.07);
+  context.fill();
+  context.stroke();
+
+  for (const side of [-1, 1]) {
+    context.beginPath();
+    context.moveTo(radius * 0.55, side * radius * 0.2);
+    context.quadraticCurveTo(
+      radius * 0.93,
+      side * radius * 0.39,
+      radius * 1.12,
+      side * radius * 0.7,
+    );
+    context.strokeStyle = color;
+    context.globalAlpha = 0.9;
+    context.lineWidth = Math.max(1, radius * 0.065);
+    context.stroke();
+    context.globalAlpha = 1;
+
+    context.beginPath();
+    context.arc(radius * 0.53, side * radius * 0.12, radius * 0.07, 0, Math.PI * 2);
+    context.fillStyle = "#f9fafb";
+    context.fill();
+  }
+
+  context.restore();
+}
+
 function drawGameShip(
   context: CanvasRenderingContext2D,
   x: number,
@@ -692,7 +809,7 @@ function renderGameFrame(now: number) {
   context.shadowBlur = 0;
 
   for (const enemy of gameEnemies) {
-    drawGameShip(context, enemy.x, enemy.y, enemy.radius, enemy.color, Math.atan2(enemy.vy, enemy.vx));
+    drawGameBug(context, enemy.x, enemy.y, enemy.radius, enemy.color, Math.atan2(enemy.vy, enemy.vx));
   }
 
   if (gameBossActive.value && gameStatus.value !== "victory") {
@@ -739,8 +856,188 @@ function renderGameFrame(now: number) {
 
 useCardSpotlight();
 
+const LOADER_DURATION = 5000;
+const LOADER_RESOURCE_TIMEOUT = 12000;
+
+function onProjectsReady() {
+  resolveProjectsReady();
+}
+
+function waitForImage(image: HTMLImageElement): Promise<void> {
+  const loadImage = async () => {
+    if (!image.complete) {
+      await new Promise<void>((resolve, reject) => {
+        const cleanup = () => {
+          image.removeEventListener("load", onLoad);
+          image.removeEventListener("error", onError);
+        };
+        const onLoad = () => {
+          cleanup();
+          resolve();
+        };
+        const onError = () => {
+          cleanup();
+          reject(new Error(`Image failed to load: ${image.currentSrc || image.src}`));
+        };
+        image.addEventListener("load", onLoad, { once: true });
+        image.addEventListener("error", onError, { once: true });
+      });
+    } else if (!image.naturalWidth) {
+      throw new Error(`Image failed to load: ${image.currentSrc || image.src}`);
+    }
+
+    await image.decode();
+  };
+
+  return settleLoaderResource(
+    `image ${image.currentSrc || image.src}`,
+    loadImage(),
+  );
+}
+
+function waitForImageUrl(src: string): Promise<void> {
+  const image = new Image();
+  image.src = src;
+  return waitForImage(image);
+}
+
+function settleLoaderResource(
+  label: string,
+  resource: Promise<unknown>,
+): Promise<void> {
+  let timeoutId: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = window.setTimeout(
+      () => reject(new Error(`Timed out loading ${label}`)),
+      LOADER_RESOURCE_TIMEOUT,
+    );
+  });
+
+  return Promise.race([resource, timeout])
+    .then(() => undefined)
+    .catch((error: unknown) => {
+      console.warn(`Preloader continued after ${label} did not load.`, error);
+    })
+    .finally(() => {
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+    });
+}
+
+function waitForWindowLoad(): Promise<void> {
+  if (document.readyState === "complete") return Promise.resolve();
+
+  return settleLoaderResource(
+    "document resources",
+    new Promise<void>((resolve) => {
+      window.addEventListener("load", () => resolve(), { once: true });
+    }),
+  );
+}
+
+function getBackgroundImageUrls(): string[] {
+  const urls = new Set<string>();
+  const urlPattern = /url\((?:"([^"]+)"|'([^']+)'|([^)]*))\)/g;
+
+  document.querySelectorAll<HTMLElement>("*").forEach((element) => {
+    for (const pseudo of [null, "::before", "::after"]) {
+      const background = window.getComputedStyle(element, pseudo).backgroundImage;
+      urlPattern.lastIndex = 0;
+      for (const match of background.matchAll(urlPattern)) {
+        const value = (match[1] || match[2] || match[3] || "").trim();
+        if (!value || value.startsWith("data:") || value.startsWith("#")) continue;
+        try {
+          urls.add(new URL(value, document.baseURI).href);
+        } catch (error) {
+          console.warn(`Preloader skipped an invalid background image URL: ${value}`, error);
+        }
+      }
+    }
+  });
+
+  return [...urls];
+}
+
+async function finishInitialLoading() {
+  const startedAt = performance.now();
+  await nextTick();
+  loadingProgress.value = 1;
+
+  let readyProgress = 1;
+  let resourcesReady = false;
+  const progressAnimation = new Promise<void>((resolve) => {
+    const updateProgress = () => {
+      const elapsed = performance.now() - startedAt;
+      const timedProgress = Math.min(99, 1 + (elapsed / (LOADER_DURATION - 200)) * 98);
+      loadingProgress.value = Math.min(Math.floor(timedProgress), readyProgress);
+
+      if (resourcesReady && elapsed >= LOADER_DURATION) {
+        loadingProgress.value = 100;
+        window.clearInterval(progressInterval);
+        resolve();
+      }
+    };
+
+    const progressInterval = window.setInterval(updateProgress, 50);
+    updateProgress();
+  });
+
+  const initialTasks = [
+    waitForWindowLoad(),
+    settleLoaderResource("portfolio fonts", document.fonts.ready),
+    settleLoaderResource("project data", projectsReady),
+    waitForImageUrl(cardFront),
+    waitForImageUrl(mjoyPortrait),
+  ];
+  let completedTasks = 0;
+  await Promise.all(
+    initialTasks.map((task) =>
+      task.finally(() => {
+        completedTasks += 1;
+        readyProgress =
+          1 + Math.floor((completedTasks / initialTasks.length) * 44);
+      }),
+    ),
+  );
+
+  await nextTick();
+  const imageUrls = new Set<string>([cardFront, mjoyPortrait]);
+  const imageElements = new Map<string, HTMLImageElement>();
+  document.querySelectorAll<HTMLImageElement>("img").forEach((image) => {
+    if (image.loading === "lazy") return;
+    const src = image.currentSrc || image.src;
+    if (src) {
+      imageUrls.add(src);
+      imageElements.set(src, image);
+    }
+  });
+  const backgroundUrls = getBackgroundImageUrls().filter((url) => !imageUrls.has(url));
+  const assetTasks = [
+    ...[...imageElements.values()].map(waitForImage),
+    ...[...imageUrls].filter((url) => !imageElements.has(url)).map(waitForImageUrl),
+    ...backgroundUrls.map(waitForImageUrl),
+  ];
+  completedTasks = 0;
+
+  await Promise.all(
+    assetTasks.map((task) =>
+      task.finally(() => {
+        completedTasks += 1;
+        readyProgress =
+          45 + Math.floor((completedTasks / assetTasks.length) * 54);
+      }),
+    ),
+  );
+  if (!assetTasks.length) readyProgress = 99;
+  resourcesReady = true;
+  await progressAnimation;
+  await nextTick();
+  await new Promise<void>((resolve) => window.setTimeout(resolve, 220));
+  isPageLoading.value = false;
+}
+
 onMounted(() => {
   gameSoundAvailable.value = "AudioContext" in window;
+  void finishInitialLoading();
   if (!("IntersectionObserver" in window)) return;
 
   const sections = sectionIds.flatMap((id) => {
@@ -875,15 +1172,29 @@ async function submitContact() {
   <v-app
     :theme="isDark ? 'dark' : 'light'"
     class="portfolio-app"
-    :class="{ 'game-mode-open': gameModeActive }"
+    :class="{
+      'game-mode-open': gameModeActive,
+      'is-loading': isPageLoading,
+    }"
   >
     <!-- Smooth Custom Cursor -->
     <SmoothCursor />
-    <div class="site-shell" :class="{ 'theme-dark': isDark }">
+    <div
+      class="site-shell"
+      :class="{ 'theme-dark': isDark }"
+      :aria-busy="isPageLoading"
+    >
+      <Transition name="portfolio-loader">
+        <PortfolioLoader
+          v-if="isPageLoading"
+          :progress="loadingProgress"
+        />
+      </Transition>
       <ParticleBackground />
       <div
         v-if="gameModeActive"
         class="space-game"
+        :class="{ 'is-victory': gameStatus === 'victory' }"
         aria-label="Spaceship game effects"
       >
         <canvas ref="gameCanvas" class="space-game__canvas" aria-hidden="true"></canvas>
@@ -1266,14 +1577,16 @@ async function submitContact() {
               <FlipCard
                 class="portfolio-flip-card"
                 aria-label="Portfolio profile card. Activate to flip."
-                :width="300"
-                :height="400"
-                :radius="22"
+                :width="320"
+                :height="480"
+                :radius="24"
                 background="#111827"
                 color="#f9fafb"
                 :tilt-max="9"
                 :glare-opacity="0.16"
                 :hover-scale="1.025"
+                :interactive-content="true"
+                @flip-change="onPortfolioCardFlipChange"
               >
                 <template #front>
                   <img
@@ -1290,11 +1603,12 @@ async function submitContact() {
                       :src="mjoyPortrait"
                       alt="A text-based portrait of Mjoy, shaped by the image's light and shadow"
                       :text="portraitTextureText"
-                      highlight-text="Ang sabi sa sarili ko wala lang 'to"
+                      highlight-text="Ang sabi sa sarili ko wala lang 'to'"
                     />
                     <blockquote class="portfolio-card-lyric">
                       “Pero ba't sa'yo na'ng aking Sabado?”
                     </blockquote>
+                    <FlipCardMusicPlayer v-if="portfolioCardFlipped" />
                   </div>
                 </template>
               </FlipCard>
@@ -1347,7 +1661,7 @@ async function submitContact() {
         <!-- Portfolio Sections -->
         <About />
         <TechStack />
-        <Projects />
+        <Projects @ready="onProjectsReady" />
         <Experience />
 
         <!-- Contact Section -->
@@ -1649,6 +1963,10 @@ async function submitContact() {
 }
 
 .portfolio-app.game-mode-open .magicui-smooth-cursor {
+  opacity: 0 !important;
+}
+
+.portfolio-app.is-loading .magicui-smooth-cursor {
   opacity: 0 !important;
 }
 
@@ -2393,12 +2711,12 @@ async function submitContact() {
     align-items: center;
     gap: 13px;
     padding: 14px 17px;
-    border: 1px solid rgba(103, 232, 249, 0.4);
+    border: 1px solid rgba(196, 181, 253, 0.4);
     border-radius: 16px;
-    background: color-mix(in srgb, var(--card) 90%, rgba(34, 211, 238, 0.16));
+    background: color-mix(in srgb, var(--card) 90%, rgba(139, 92, 246, 0.16));
     box-shadow:
       0 16px 54px rgba(0, 0, 0, 0.3),
-      0 0 30px rgba(103, 232, 249, 0.13),
+      0 0 30px rgba(139, 92, 246, 0.18),
       inset 0 1px rgba(255, 255, 255, 0.09);
     color: var(--text);
     backdrop-filter: blur(18px);
@@ -2413,11 +2731,12 @@ async function submitContact() {
     height: 40px;
     flex: 0 0 auto;
     place-items: center;
-    border: 1px solid rgba(103, 232, 249, 0.3);
+    border: 1px solid rgba(196, 181, 253, 0.3);
     border-radius: 12px;
-    background: rgba(34, 211, 238, 0.12);
-    color: #67e8f9;
-    box-shadow: 0 0 22px rgba(103, 232, 249, 0.12);
+    background: rgba(139, 92, 246, 0.15);
+    color: #c4b5fd;
+    box-shadow: 0 0 22px rgba(139, 92, 246, 0.16);
+    animation: game-victory-icon-pulse 1.8s ease-in-out infinite;
   }
 
   &__victory-copy {
@@ -2439,7 +2758,7 @@ async function submitContact() {
 
   &__victory-score {
     margin-left: auto;
-    color: #67e8f9;
+    color: #c4b5fd;
     font: 700 0.68rem/1 var(--mono);
     white-space: nowrap;
   }
@@ -2585,6 +2904,14 @@ async function submitContact() {
   }
 }
 
+.space-game.is-victory {
+  background:
+    radial-gradient(ellipse at 50% -18%, rgba(109, 40, 217, 0.16), transparent 58%),
+    rgba(7, 11, 24, 0.3);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
 @media (max-width: 600px) {
   .space-game__victory-toast {
     top: calc(128px + env(safe-area-inset-top));
@@ -2635,6 +2962,19 @@ async function submitContact() {
   to {
     opacity: 1;
     transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes game-victory-icon-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 18px rgba(139, 92, 246, 0.14);
+  }
+
+  50% {
+    transform: scale(1.07);
+    box-shadow: 0 0 28px rgba(196, 181, 253, 0.32);
   }
 }
 </style>

@@ -35,6 +35,7 @@ const props = withDefaults(
     shadowOpacity?: number;
     disabled?: boolean;
     ariaLabel?: string;
+    interactiveContent?: boolean;
   }>(),
   {
     axis: "y",
@@ -56,6 +57,7 @@ const props = withDefaults(
     shadowOpacity: 0.45,
     disabled: false,
     ariaLabel: "Flip card",
+    interactiveContent: false,
   },
 );
 
@@ -219,9 +221,10 @@ onBeforeUnmount(() => {
       'has-glare': glare,
     }"
     :style="cardStyle"
-    role="button"
+    :role="interactiveContent ? 'group' : 'button'"
     :tabindex="disabled ? -1 : 0"
-    :aria-pressed="flipped"
+    :aria-pressed="interactiveContent ? undefined : flipped"
+    :aria-expanded="interactiveContent ? flipped : undefined"
     :aria-label="ariaLabel"
     :aria-disabled="disabled || undefined"
     @pointerdown="onPointerDown"

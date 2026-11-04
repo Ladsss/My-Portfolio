@@ -108,7 +108,7 @@ html {
   > * {
     position: relative;
   }
-  > :not(.particle-background):not(.topbar) {
+  > :not(.particle-background):not(.topbar):not(.portfolio-loader) {
     z-index: 1;
   }
   *,
@@ -123,6 +123,19 @@ html {
   section[id] {
     scroll-margin-top: 84px;
   }
+}
+
+.portfolio-loader-enter-active,
+.portfolio-loader-leave-active {
+  transition:
+    opacity 420ms var(--ease),
+    visibility 420ms var(--ease);
+}
+
+.portfolio-loader-enter-from,
+.portfolio-loader-leave-to {
+  opacity: 0;
+  visibility: hidden;
 }
 
 @media (pointer: coarse) {
@@ -721,8 +734,8 @@ h2 {
   z-index: 2;
   top: 50%;
   left: 50%;
-  width: min(300px, 78%);
-  aspect-ratio: 3 / 4;
+  width: min(320px, 84%);
+  aspect-ratio: 2 / 3;
   translate: -50% -50%;
 }
 .portfolio-card-image {
@@ -795,13 +808,16 @@ h2 {
   }
   &::before {
     top: 0;
-    height: 28%;
-    background: linear-gradient(180deg, rgba(17, 14, 28, 0.88), transparent);
+    z-index: 1;
+    height: 100%;
+    background:
+      radial-gradient(ellipse at 50% 25%, rgba(139, 92, 246, 0.13), transparent 48%),
+      linear-gradient(180deg, rgba(8, 10, 22, 0.08) 0%, rgba(8, 10, 22, 0.12) 38%, rgba(8, 10, 22, 0.64) 62%, rgba(8, 10, 22, 0.96) 100%);
   }
   &::after {
     bottom: 0;
-    height: 34%;
-    background: linear-gradient(0deg, rgba(17, 14, 28, 0.94), transparent);
+    height: 44%;
+    background: linear-gradient(0deg, rgba(7, 9, 20, 0.55), transparent);
   }
   .portfolio-card-back-heading {
     position: absolute;
@@ -839,18 +855,19 @@ h2 {
     position: absolute;
     z-index: 0;
     inset: 0;
+    filter: brightness(0.82) saturate(0.82);
   }
   .portfolio-card-lyric {
     position: absolute;
     z-index: 2;
     right: 16px;
-    bottom: 34px;
+    bottom: 174px;
     left: 16px;
     margin: 0;
-    color: #fff0df;
-    font: italic 500 13px/1.4 Georgia, serif;
-    text-align: center;
-    text-shadow: 0 2px 12px rgba(10, 8, 18, 0.9);
+    color: rgba(245, 243, 255, 0.88);
+    font: italic 500 11px/1.5 Georgia, serif;
+    text-align: left;
+    text-shadow: 0 2px 12px rgba(8, 10, 22, 0.85);
   }
   .portfolio-card-back-hint {
     position: absolute;
@@ -861,6 +878,72 @@ h2 {
     color: rgba(238, 226, 232, 0.72);
     font: 500 8px/1.3 var(--font-body);
     text-align: center;
+  }
+
+  @media (max-width: 380px) {
+    .portfolio-card-lyric {
+      right: 12px;
+      bottom: 166px;
+      left: 12px;
+      font-size: 10px;
+    }
+  }
+}
+.site-shell:not(.theme-dark) .flip-card-music-player {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: #171322;
+  color-scheme: light;
+
+  .flip-card-music-player__details strong {
+    color: #171322;
+  }
+
+  .flip-card-music-player__details span,
+  .flip-card-music-player__times,
+  .flip-card-music-player__controls button,
+  .flip-card-music-player__share {
+    color: #51466a;
+  }
+
+  .flip-card-music-player__favorite[aria-pressed="true"] {
+    color: #7e22ce;
+  }
+
+  .flip-card-music-player__seek {
+    background-image:
+      linear-gradient(
+        90deg,
+        #8b5cf6 0,
+        #8b5cf6 var(--seek-progress),
+        rgba(23, 19, 34, 0.2) var(--seek-progress),
+        rgba(23, 19, 34, 0.2) 100%
+      );
+  }
+
+  .flip-card-music-player__seek::-webkit-slider-thumb {
+    border-color: #fff;
+  }
+
+  .flip-card-music-player__seek::-moz-range-thumb {
+    border-color: #fff;
+  }
+
+  .flip-card-music-player__controls .flip-card-music-player__play {
+    border-color: #8b5cf6;
+    background: #6d28d9;
+    color: #fff;
+  }
+
+  .flip-card-music-player__status {
+    color: #51466a;
+  }
+
+  .flip-card-music-player__error {
+    color: #9f1239;
   }
 }
 .visual-orbit {
@@ -1193,7 +1276,7 @@ h2 {
   position: absolute;
   z-index: 4;
   bottom: 26%;
-  left: 2%;
+  left: -8%;
   display: grid;
   justify-items: start;
   gap: 8px;
@@ -1801,7 +1884,7 @@ h2 {
     font-size: clamp(2.4rem, 9.5vw, 3.2rem);
   }
   .hero-visual {
-    height: 500px;
+    height: 680px;
   }
   .hero-visual::after {
     inset: 5% 0 8%;
@@ -1859,7 +1942,7 @@ h2 {
     }
   }
   .hero-highlights {
-    bottom: 34%;
+    bottom: 0;
     left: 0;
     gap: 6px;
   }

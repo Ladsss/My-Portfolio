@@ -26,6 +26,9 @@ const selectedProject = ref<Project | null>(null)
 const projects = ref<Project[]>([])
 const isLoading = ref(true)
 const loadError = ref('')
+const emit = defineEmits<{
+  ready: []
+}>()
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
 const isProjectDialogOpen = computed({
   get: () => selectedProject.value !== null,
@@ -41,6 +44,7 @@ onMounted(async () => {
     loadError.value = 'Projects could not be loaded right now. Please try again later.'
   } finally {
     isLoading.value = false
+    emit('ready')
   }
 })
 const visibleProjects = computed(() => projects.value)
